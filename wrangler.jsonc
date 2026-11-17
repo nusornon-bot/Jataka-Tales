@@ -1,5 +1,4 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sala-jataka",
   "main": "worker/index.ts",
   "compatibility_date": "2026-03-01",
