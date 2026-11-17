@@ -21,6 +21,12 @@ import {
 
 const PORT = Number(process.env.PORT) || 3000;
 const CACHE_FILE = path.resolve(process.cwd(), '.jataka_cache.json');
+const SERVER_MISSING_KEY_MSG =
+  'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์ (ใน AI Studio กรุณาตั้งค่า GEMINI_API_KEY ใน Settings > Secrets หรือไฟล์ .env — ท่านยังสามารถอ่านชาดกที่แคชไว้แล้วได้ตามปกติ)';
+
+function getServerApiKey() {
+  return process.env.GEMINI_API_KEY || process.env.API_KEY;
+}
 
 const memoryCache: ServerCacheData = {
   nipataPages: {},
@@ -102,7 +108,7 @@ async function startServer() {
       let pending = inFlightNipata.get(key);
       if (!pending) {
         pending = generateNipataIndex(
-          process.env.GEMINI_API_KEY,
+          getServerApiKey(),
           nipataName || 'ขุททกนิกาย ชาดก',
           start,
           end
@@ -117,7 +123,11 @@ async function startServer() {
       await saveDiskCache();
       res.json({ entries, fromCache: false });
     } catch (err: unknown) {
-      const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถดึงสารบัญนิบาตได้');
+      const formatted = formatGeminiErrorResponse(
+        err,
+        'ไม่สามารถดึงสารบัญนิบาตได้',
+        SERVER_MISSING_KEY_MSG
+      );
       if (formatted.quotaExceeded) {
         console.warn('nipata-index quota reached (429)');
       } else {
@@ -157,7 +167,7 @@ async function startServer() {
       let pending = inFlightBundles.get(key);
       if (!pending) {
         pending = generateFullBundle(
-          process.env.GEMINI_API_KEY,
+          getServerApiKey(),
           num,
           thaiTitle,
           paliTitle,
@@ -173,7 +183,11 @@ async function startServer() {
       await saveDiskCache();
       res.json({ bundle, fromCache: false });
     } catch (err: unknown) {
-      const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้');
+      const formatted = formatGeminiErrorResponse(
+        err,
+        'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้',
+        SERVER_MISSING_KEY_MSG
+      );
       console.warn('bundle warning:', formatted.message);
       res.status(formatted.status).json({
         error: formatted.message,
@@ -215,7 +229,7 @@ async function startServer() {
       let pending = inFlightWisdom.get(key);
       if (!pending) {
         pending = generateDailyWisdom(
-          process.env.GEMINI_API_KEY,
+          getServerApiKey(),
           num,
           nipataName
         ).finally(() => {
@@ -229,7 +243,11 @@ async function startServer() {
       await saveDiskCache();
       res.json({ wisdom, fromCache: false });
     } catch (err: unknown) {
-      const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถดึงข้อคิดประจำวันได้');
+      const formatted = formatGeminiErrorResponse(
+        err,
+        'ไม่สามารถดึงข้อคิดประจำวันได้',
+        SERVER_MISSING_KEY_MSG
+      );
       console.warn('daily-wisdom warning:', formatted.message);
       res.status(formatted.status).json({
         error: formatted.message,
@@ -266,7 +284,7 @@ async function startServer() {
       let pending = inFlightArtworks.get(key);
       if (!pending) {
         pending = generateSceneVisual(
-          process.env.GEMINI_API_KEY,
+          getServerApiKey(),
           num,
           title,
           summary
@@ -284,7 +302,11 @@ async function startServer() {
       await saveDiskCache();
       res.json({ sceneVisual, fromCache: false });
     } catch (err: unknown) {
-      const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถออกแบบฉากภาพประกอบได้');
+      const formatted = formatGeminiErrorResponse(
+        err,
+        'ไม่สามารถออกแบบฉากภาพประกอบได้',
+        SERVER_MISSING_KEY_MSG
+      );
       console.warn('artwork warning:', formatted.message);
       res.status(formatted.status).json({
         error: formatted.message,

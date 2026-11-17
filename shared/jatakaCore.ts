@@ -144,7 +144,11 @@ export function isQuotaError(err: unknown): boolean {
   );
 }
 
-export function formatGeminiErrorResponse(err: unknown, defaultMessage: string) {
+export function formatGeminiErrorResponse(
+  err: unknown,
+  defaultMessage: string,
+  missingKeyMessage?: string
+) {
   if (isQuotaError(err)) {
     return {
       status: 429,
@@ -159,7 +163,8 @@ export function formatGeminiErrorResponse(err: unknown, defaultMessage: string) 
       status: 503,
       quotaExceeded: false,
       message:
-        'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์ (กรุณาตั้งค่า Secret GEMINI_API_KEY ด้วย wrangler secret put หรือใน .dev.vars)',
+        missingKeyMessage ||
+        'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์ (ท่านยังสามารถอ่านชาดกและหมวดที่โหลดไว้แล้วได้ตามปกติ)',
     };
   }
   if (raw.includes('PERMISSION_DENIED') || raw.includes('API_KEY_INVALID')) {
@@ -186,7 +191,7 @@ export function getGenAIClient(apiKey?: string) {
     apiKey: trimmed,
     httpOptions: {
       headers: {
-        'User-Agent': 'sala-jataka-server',
+        'User-Agent': 'aistudio-build',
       },
     },
   });

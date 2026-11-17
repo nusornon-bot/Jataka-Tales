@@ -16,8 +16,16 @@ import {
 
 export interface Env {
   GEMINI_API_KEY?: string;
+  API_KEY?: string;
   ASSETS: Fetcher;
   JATAKA_KV?: KVNamespace;
+}
+
+const WORKER_MISSING_KEY_MSG =
+  'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Cloudflare Workers (ตั้งค่า Secret GEMINI_API_KEY ได้ที่ Cloudflare Dashboard > Settings > Variables and Secrets หรือรัน npx wrangler secret put GEMINI_API_KEY / ใส่ใน .dev.vars — ท่านยังสามารถอ่านชาดกที่แคชไว้แล้วได้ตามปกติ)';
+
+function getWorkerApiKey(env: Env): string | undefined {
+  return env.GEMINI_API_KEY || env.API_KEY;
 }
 
 const seedData = seedCacheJson as unknown as Partial<ServerCacheData>;
@@ -173,7 +181,7 @@ async function handleNipataIndex(
     let pending = inFlightNipata.get(key);
     if (!pending) {
       pending = generateNipataIndex(
-        env.GEMINI_API_KEY,
+        getWorkerApiKey(env),
         body.nipataName || 'ขุททกนิกาย ชาดก',
         start,
         end
@@ -192,7 +200,11 @@ async function handleNipataIndex(
 
     return jsonResponse({ entries, fromCache: false });
   } catch (err: unknown) {
-    const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถดึงสารบัญนิบาตได้');
+    const formatted = formatGeminiErrorResponse(
+      err,
+      'ไม่สามารถดึงสารบัญนิบาตได้',
+      WORKER_MISSING_KEY_MSG
+    );
     return jsonResponse(
       {
         error: formatted.message,
@@ -242,7 +254,7 @@ async function handleBundle(
     let pending = inFlightBundles.get(key);
     if (!pending) {
       pending = generateFullBundle(
-        env.GEMINI_API_KEY,
+        getWorkerApiKey(env),
         num,
         body.thaiTitle,
         body.paliTitle,
@@ -262,7 +274,11 @@ async function handleBundle(
 
     return jsonResponse({ bundle, fromCache: false });
   } catch (err: unknown) {
-    const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้');
+    const formatted = formatGeminiErrorResponse(
+      err,
+      'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้',
+      WORKER_MISSING_KEY_MSG
+    );
     return jsonResponse(
       {
         error: formatted.message,
@@ -326,7 +342,7 @@ async function handleDailyWisdom(
     let pending = inFlightWisdom.get(key);
     if (!pending) {
       pending = generateDailyWisdom(
-        env.GEMINI_API_KEY,
+        getWorkerApiKey(env),
         num,
         body.nipataName
       ).finally(() => {
@@ -343,7 +359,11 @@ async function handleDailyWisdom(
 
     return jsonResponse({ wisdom, fromCache: false });
   } catch (err: unknown) {
-    const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถดึงข้อคิดประจำวันได้');
+    const formatted = formatGeminiErrorResponse(
+      err,
+      'ไม่สามารถดึงข้อคิดประจำวันได้',
+      WORKER_MISSING_KEY_MSG
+    );
     return jsonResponse(
       {
         error: formatted.message,
@@ -402,7 +422,7 @@ async function handleArtwork(
     let pending = inFlightArtworks.get(key);
     if (!pending) {
       pending = generateSceneVisual(
-        env.GEMINI_API_KEY,
+        getWorkerApiKey(env),
         num,
         body.title,
         body.summary
@@ -423,7 +443,11 @@ async function handleArtwork(
 
     return jsonResponse({ sceneVisual, fromCache: false });
   } catch (err: unknown) {
-    const formatted = formatGeminiErrorResponse(err, 'ไม่สามารถออกแบบฉากภาพประกอบได้');
+    const formatted = formatGeminiErrorResponse(
+      err,
+      'ไม่สามารถออกแบบฉากภาพประกอบได้',
+      WORKER_MISSING_KEY_MSG
+    );
     return jsonResponse(
       {
         error: formatted.message,

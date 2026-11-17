@@ -67,12 +67,17 @@ npx wrangler login
 ```
 
 ### ขั้นตอนที่ 2: ตั้งค่า Secret `GEMINI_API_KEY` บน Cloudflare
-คำสั่งนี้จะเข้ารหัสคีย์ไว้บนฝั่งเซิร์ฟเวอร์ของ Cloudflare โดยไม่บันทึกลงในโค้ดหรือ `wrangler.jsonc`:
-
-```bash
-npx wrangler secret put GEMINI_API_KEY
-```
-*(เมื่อระบบถาม ให้วาง Gemini API Key แล้วกด Enter)*
+เลือกตั้งค่าได้ 2 วิธี (ทำครั้งเดียว):
+- **วิธี A — ผ่าน CLI (แนะนำ):**
+  ```bash
+  npx wrangler secret put GEMINI_API_KEY
+  ```
+  *(เมื่อระบบถาม ให้วาง Gemini API Key แล้วกด Enter)*
+- **วิธี B — ผ่านหน้าเว็บ Cloudflare Dashboard (หาก Deploy ผ่าน GitHub หรือไม่สะดวกใช้ CLI):**
+  1. เข้า **Cloudflare Dashboard > Workers & Pages** > เลือก Worker **`sala-jataka`**
+  2. ไปที่แท็บ **Settings > Variables and Secrets**
+  3. กด **+ Add** แล้วเลือก Type เป็น **Secret**
+  4. ตั้งชื่อ Variable name เป็น `GEMINI_API_KEY` และวางค่า API Key ลงใน Value แล้วกด **Deploy / Save**
 
 ### ขั้นตอนที่ 3: Build และ Deploy
 ```bash
@@ -81,6 +86,8 @@ npm run cf:deploy
 
 คำสั่งนี้จะรัน `vite build` แล้วตามด้วย `wrangler deploy` เมื่อเสร็จสิ้นจะได้ URL สำหรับใช้งานจริง เช่น:
 `https://sala-jataka.<your-subdomain>.workers.dev`
+
+*(หากเชื่อม GitHub กับ **Cloudflare Workers Builds** บน Dashboard ให้ตั้งค่า Build command เป็น `npm run build` และ Deploy command เป็น `npx wrangler deploy` พร้อมเพิ่ม Secret `GEMINI_API_KEY` ใน Settings > Variables and Secrets)*
 
 ---
 
