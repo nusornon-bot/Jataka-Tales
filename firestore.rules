@@ -1,0 +1,221 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    // Entity Validators (Blueprint Synchronicity)
+    function isValidUserProgress(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'readNumbers', 'unlockedNumbers',
+          'completedInteractiveIds', 'quizAttemptsCount', 'bestQuizScore',
+          'theme', 'fontSize', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'readNumbers', 'unlockedNumbers',
+          'completedInteractiveIds', 'quizAttemptsCount', 'bestQuizScore',
+          'theme', 'fontSize', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && data.displayName is string
+        && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && data.readNumbers is list
+        && data.readNumbers.size() <= 547
+        && (data.readNumbers.size() == 0 || data.readNumbers[0] is int)
+        && data.unlockedNumbers is list
+        && data.unlockedNumbers.size() <= 547
+        && (data.unlockedNumbers.size() == 0 || data.unlockedNumbers[0] is int)
+        && data.completedInteractiveIds is list
+        && data.completedInteractiveIds.size() <= 547
+        && (data.completedInteractiveIds.size() == 0 || data.completedInteractiveIds[0] is string)
+        && data.quizAttemptsCount is int
+        && data.quizAttemptsCount >= 0 && data.quizAttemptsCount <= 100000
+        && data.bestQuizScore is int
+        && data.bestQuizScore >= -1 && data.bestQuizScore <= 100
+        && data.theme in ['light', 'dark']
+        && data.fontSize in ['sm', 'md', 'lg']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && data.email is string && data.email.size() <= 254
+        && data.photoURL is string && data.photoURL.size() <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBookmark(data, userId, taleId) {
+      return data.keys().hasAll(['uid', 'taleId', 'jatakaNumber', 'title', 'barami', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'taleId', 'jatakaNumber', 'title', 'barami', 'createdAt'])
+        && data.uid is string
+        && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && data.taleId is string
+        && data.taleId.size() >= 1 && data.taleId.size() <= 128
+        && data.taleId == taleId
+        && data.jatakaNumber is int
+        && data.jatakaNumber >= 0 && data.jatakaNumber <= 547
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.barami is string && data.barami.size() >= 1 && data.barami.size() <= 120
+        && data.createdAt is timestamp;
+    }
+
+    function isValidReflectionNote(data, userId, taleId) {
+      return data.keys().hasAll(['uid', 'taleId', 'jatakaNumber', 'title', 'content', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'taleId', 'jatakaNumber', 'title', 'content', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid.size() >= 1 && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && data.uid == userId
+        && data.taleId is string
+        && data.taleId.size() >= 1 && data.taleId.size() <= 128
+        && data.taleId == taleId
+        && data.jatakaNumber is int
+        && data.jatakaNumber >= 0 && data.jatakaNumber <= 547
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 2000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // 1. User Progress & Preferences
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProgress(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProgress(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Sync reading progress & scores
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'readNumbers', 'unlockedNumbers', 'completedInteractiveIds',
+            'quizAttemptsCount', 'bestQuizScore', 'displayName', 'updatedAt'
+          ]) ||
+          // Action: Update display preferences
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'theme', 'fontSize', 'updatedAt'
+          ]) ||
+          // Action: Full state sync
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName', 'readNumbers', 'unlockedNumbers',
+            'completedInteractiveIds', 'quizAttemptsCount', 'bestQuizScore',
+            'theme', 'fontSize', 'updatedAt'
+          ])
+        );
+
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // 2. Isolated PII Profile
+      match /private/{profileId} {
+        allow get: if isValidId(userId) && isValidId(profileId) && profileId == 'profile' && isOwner(userId);
+        allow list: if false;
+
+        allow create: if isValidId(userId) && isValidId(profileId) && profileId == 'profile'
+          && isOwner(userId)
+          && isValidPrivateProfile(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isValidId(userId) && isValidId(profileId) && profileId == 'profile'
+          && isOwner(userId)
+          && isValidPrivateProfile(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'photoURL', 'updatedAt']);
+
+        allow delete: if isValidId(userId) && isValidId(profileId) && profileId == 'profile' && isOwner(userId);
+      }
+
+      // 3. Bookmarks
+      match /bookmarks/{taleId} {
+        allow get: if isValidId(userId) && isValidId(taleId) && isOwner(userId);
+        allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+
+        allow create: if isValidId(userId) && isValidId(taleId)
+          && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidBookmark(incoming(), userId, taleId)
+          && incoming().createdAt == request.time;
+
+        allow update: if false;
+
+        allow delete: if isValidId(userId) && isValidId(taleId) && isOwner(userId);
+      }
+
+      // 4. Personal Reflection Notes
+      match /notes/{taleId} {
+        allow get: if isValidId(userId) && isValidId(taleId) && isOwner(userId);
+        allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+
+        allow create: if isValidId(userId) && isValidId(taleId)
+          && isOwner(userId)
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && isValidReflectionNote(incoming(), userId, taleId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isValidId(userId) && isValidId(taleId)
+          && isOwner(userId)
+          && isValidReflectionNote(incoming(), userId, taleId)
+          && incoming().uid == existing().uid
+          && incoming().taleId == existing().taleId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'jatakaNumber', 'content', 'updatedAt']);
+
+        allow delete: if isValidId(userId) && isValidId(taleId) && isOwner(userId);
+      }
+    }
+  }
+}

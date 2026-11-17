@@ -1,0 +1,221 @@
+{
+  "entities": {
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Public-safe user reading progress, Ten Barami mastery inputs, and display preferences synced across devices.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the owner."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Display name shown in the user account drawer."
+        },
+        "readNumbers": {
+          "type": "array",
+          "description": "Sorted list of Canon Jataka numbers (1..547) marked as read."
+        },
+        "unlockedNumbers": {
+          "type": "array",
+          "description": "Sorted list of Canon Jataka numbers (1..547) unlocked by the user."
+        },
+        "completedInteractiveIds": {
+          "type": "array",
+          "description": "List of interactive story IDs completed by the user."
+        },
+        "quizAttemptsCount": {
+          "type": "integer",
+          "description": "Total completed quiz sessions."
+        },
+        "bestQuizScore": {
+          "type": "integer",
+          "description": "Highest quiz accuracy percentage (0-100, or -1 if none yet)."
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "description": "Preferred reading color theme."
+        },
+        "fontSize": {
+          "type": "string",
+          "enum": ["sm", "md", "lg"],
+          "description": "Preferred reading font size."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when user progress document was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest sync update."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "readNumbers",
+        "unlockedNumbers",
+        "completedInteractiveIds",
+        "quizAttemptsCount",
+        "bestQuizScore",
+        "theme",
+        "fontSize",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrivateProfile": {
+      "title": "UserPrivateProfile",
+      "description": "Isolated PII document storing user email and avatar URL strictly accessible only to the owner.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "photoURL", "createdAt", "updatedAt"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "A bookmarked Jataka tale saved by a user for quick revisiting.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "taleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "jatakaNumber": {
+          "type": "integer",
+          "description": "Canon number (1..547), or 0 if unmapped."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "barami": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "taleId", "jatakaNumber", "title", "barami", "createdAt"]
+    },
+    "ReflectionNote": {
+      "title": "ReflectionNote",
+      "description": "Personal Dhamma reflection note written by the user for a specific Jataka tale.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "taleId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "jatakaNumber": {
+          "type": "integer",
+          "description": "Canon number (1..547), or 0 if unmapped."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "taleId",
+        "jatakaNumber",
+        "title",
+        "content",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProgress"
+      },
+      "description": "Owner-only reading progress, quiz best score, Ten Barami metrics, and UI preferences."
+    },
+    "/users/{userId}/private/{profileId}": {
+      "schema": {
+        "$ref": "#/entities/UserPrivateProfile"
+      },
+      "description": "Isolated PII storage (email and avatar URL), strictly accessible to the owning verified user."
+    },
+    "/users/{userId}/bookmarks/{taleId}": {
+      "schema": {
+        "$ref": "#/entities/Bookmark"
+      },
+      "description": "User's personal bookmarked Jataka tales."
+    },
+    "/users/{userId}/notes/{taleId}": {
+      "schema": {
+        "$ref": "#/entities/ReflectionNote"
+      },
+      "description": "User's personal reflection notes attached to individual Jataka tales."
+    }
+  }
+}

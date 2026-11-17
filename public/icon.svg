@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="gold" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <circle cx="256" cy="256" r="196" stroke="#FDE68A" stroke-opacity="0.28" stroke-width="6" />
+  <circle cx="256" cy="256" r="172" stroke="#FDE68A" stroke-opacity="0.16" stroke-width="2" />
+  <!-- Bodhi leaf silhouette -->
+  <path d="M256 96C202 158 148 214 148 276C148 332 192 372 256 372C320 372 364 332 364 276C364 214 310 158 256 96Z" fill="url(#gold)" fill-opacity="0.92" />
+  <!-- Stem & central vein -->
+  <path d="M256 142V412" stroke="#0F172A" stroke-width="10" stroke-linecap="round" />
+  <path d="M256 220L206 186M256 266L194 236M256 312L204 288" stroke="#0F172A" stroke-width="7" stroke-linecap="round" opacity="0.65" />
+  <path d="M256 220L306 186M256 266L318 236M256 312L308 288" stroke="#0F172A" stroke-width="7" stroke-linecap="round" opacity="0.65" />
+  <!-- Lotus pedestal -->
+  <path d="M168 394C198 378 228 384 256 402C284 384 314 378 344 394C320 420 288 430 256 430C224 430 192 420 168 394Z" fill="#FDE68A" fill-opacity="0.9" />
+</svg>
