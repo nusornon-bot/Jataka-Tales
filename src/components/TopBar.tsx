@@ -47,7 +47,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-[#FAF8F3]/95 dark:bg-[#111318]/95 backdrop-blur-sm border-b border-[#E4DEC9] dark:border-[#2E3442]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left Zone: Brand */}
         <a
           href="#top"
@@ -55,7 +55,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
             e.preventDefault();
             onSelectMode('home');
           }}
-          className="font-serif text-xl font-bold tracking-tight text-[#1C1917] dark:text-[#F3F0E6] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] rounded"
+          className="font-serif text-lg sm:text-xl font-bold tracking-tight text-[#1C1917] dark:text-[#F3F0E6] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] rounded"
         >
           ศาลาชาดก
         </a>
@@ -82,7 +82,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
         </nav>
 
         {/* Right Zone: Compact Utilities & Account */}
-        <div className="flex items-center gap-2 shrink-0 relative">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
           <PWAInstallButton />
 
           <button
@@ -90,10 +90,11 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
             onClick={() => setFontSize(NEXT_FONT_SIZE[fontSize])}
             title={`ปรับขนาดตัวอักษรสำหรับอ่าน (ปัจจุบัน: ${FONT_LABELS[fontSize]})`}
             aria-label={`ปรับขนาดตัวอักษร ปัจจุบัน${FONT_LABELS[fontSize]}`}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-[#1C1917] dark:text-[#F3F0E6] bg-white dark:bg-[#1A1D24] border border-[#D6CEBE] dark:border-[#374151] hover:bg-[#F3EFE6] dark:hover:bg-[#232732] rounded-md transition-colors whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 text-xs font-medium text-[#1C1917] dark:text-[#F3F0E6] bg-white dark:bg-[#1A1D24] border border-[#D6CEBE] dark:border-[#374151] hover:bg-[#F3EFE6] dark:hover:bg-[#232732] rounded-md transition-colors whitespace-nowrap shrink-0"
           >
             <TypeIcon className="w-3.5 h-3.5 text-[#92400E] dark:text-amber-400" aria-hidden="true" />
-            <span>ก {FONT_LABELS[fontSize]}</span>
+            <span className="hidden sm:inline">ก {FONT_LABELS[fontSize]}</span>
+            <span className="sm:hidden">{FONT_LABELS[fontSize]}</span>
           </button>
 
           <button
@@ -133,7 +134,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-[#1A1D24] border border-[#E4DEC9] dark:border-[#2E3442] rounded-xl shadow-lg p-4 space-y-3 z-40">
+                <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-white dark:bg-[#1A1D24] border border-[#E4DEC9] dark:border-[#2E3442] rounded-xl shadow-lg p-4 space-y-3 z-40">
                   <div className="space-y-0.5">
                     <div className="text-sm font-semibold text-[#1C1917] dark:text-[#F3F0E6] truncate">
                       {user.displayName || 'กัลยาณมิตร'}
@@ -175,7 +176,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
               type="button"
               disabled={authBusy}
               onClick={() => void signInWithGoogle()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172D6E] disabled:opacity-60 rounded-md transition-colors whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#172D6E] disabled:opacity-60 rounded-md transition-colors whitespace-nowrap shrink-0"
             >
               <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{authBusy ? 'กำลังเข้า...' : 'เข้าสู่ระบบ'}</span>
@@ -201,7 +202,7 @@ export const TopBar: React.FC<TopBarProps> = ({ activeMode, onSelectMode }) => {
       )}
 
       {/* Mobile Compact Mode Row */}
-      <div className="md:hidden border-t border-[#E4DEC9] dark:border-[#2E3442] px-4 py-2 flex items-center gap-2 overflow-x-auto">
+      <div className="md:hidden border-t border-[#E4DEC9] dark:border-[#2E3442] px-3 sm:px-4 py-2 flex items-center gap-1.5 overflow-x-auto">
         {navLinks.map((item) => {
           const isActive = activeMode === item.id;
           return (

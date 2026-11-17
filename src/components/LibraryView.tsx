@@ -752,7 +752,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           </h1>
 
           {/* Library View Switcher: Curated vs Full 547 Canon */}
-          <div className="inline-flex items-center p-1 bg-[#EFEAE0] dark:bg-[#1A1D24] border border-[#DFD7C5] dark:border-[#2E3442] rounded-lg">
+          <div className="inline-flex flex-wrap sm:flex-nowrap max-w-full items-center p-1 bg-[#EFEAE0] dark:bg-[#1A1D24] border border-[#DFD7C5] dark:border-[#2E3442] rounded-lg gap-1">
             <button
               type="button"
               onClick={() => onChangeSubTab('curated')}

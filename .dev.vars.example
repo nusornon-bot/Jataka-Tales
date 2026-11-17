@@ -1,0 +1,6 @@
+# Local secrets for Cloudflare Workers development (`npx wrangler dev`).
+# Copy this file to `.dev.vars` (which is gitignored) and set your Gemini API key.
+# Free-tier Gemini API keys from Google AI Studio work with zero Google Cloud Billing required.
+# For production deployments, ALWAYS use `npx wrangler secret put GEMINI_API_KEY` instead.
+
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"

@@ -178,7 +178,7 @@ export const VoiceNarrationPlayer: React.FC<VoiceNarrationPlayerProps> = ({
 
       {/* Ambient Music Volume Control when active */}
       {isMusicPlaying && (
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#EFEAE0]/60 dark:bg-[#1E222D] text-xs text-stone-700 dark:text-stone-300">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg bg-[#EFEAE0]/60 dark:bg-[#1E222D] text-xs text-stone-700 dark:text-stone-300">
           <span className="whitespace-nowrap font-medium">ระดับเสียงดนตรีไทย:</span>
           <input
             type="range"
@@ -188,7 +188,7 @@ export const VoiceNarrationPlayer: React.FC<VoiceNarrationPlayerProps> = ({
             aria-label="ระดับเสียงดนตรีไทย"
             value={musicVolume}
             onChange={(e) => setMusicVolume(Number(e.target.value))}
-            className="w-36 accent-[#92400E] dark:accent-amber-400"
+            className="flex-1 min-w-[100px] max-w-[144px] accent-[#92400E] dark:accent-amber-400"
           />
           <span className="font-mono tabular-nums text-[11px]">
             {Math.round((musicVolume / 0.55) * 100)}%
@@ -248,7 +248,7 @@ export const VoiceNarrationPlayer: React.FC<VoiceNarrationPlayerProps> = ({
                   aria-label="เลือกเสียงผู้บรรยาย"
                   value={selectedVoiceURI}
                   onChange={(e) => onChangeVoice(e.target.value)}
-                  className="max-w-[170px] truncate px-2.5 py-1 text-xs bg-white dark:bg-[#232732] border border-[#D6CEBE] dark:border-[#374151] rounded-md text-[#1C1917] dark:text-[#F3F0E6]"
+                  className="max-w-full sm:max-w-[170px] truncate px-2.5 py-1 text-xs bg-white dark:bg-[#232732] border border-[#D6CEBE] dark:border-[#374151] rounded-md text-[#1C1917] dark:text-[#F3F0E6]"
                 >
                   {voices.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>

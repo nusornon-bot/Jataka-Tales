@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sala-jataka",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true
+  }
+  // Optional (Free Tier compatible):
+  // If you want newly generated Jataka stories to persist across Worker restarts,
+  // create a KV namespace with `npx wrangler kv namespace create JATAKA_KV`
+  // and uncomment the block below with your namespace ID:
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "JATAKA_KV",
+  //     "id": "YOUR_KV_NAMESPACE_ID"
+  //   }
+  // ]
+}

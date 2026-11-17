@@ -267,7 +267,7 @@ export default function App() {
   return (
     <div
       id="top"
-      className="min-h-screen flex flex-col bg-[#FAF8F3] dark:bg-[#111318] text-[#1C1917] dark:text-[#F3F0E6] transition-colors"
+      className="min-h-screen overflow-x-clip flex flex-col bg-[#FAF8F3] dark:bg-[#111318] text-[#1C1917] dark:text-[#F3F0E6] transition-colors"
     >
       <TopBar activeMode={activeMode} onSelectMode={handleSelectMode} />
 
