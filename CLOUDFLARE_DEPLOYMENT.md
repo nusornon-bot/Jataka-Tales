@@ -89,7 +89,11 @@ npm run cf:deploy
 คำสั่งนี้จะรัน `vite build` แล้วตามด้วย `wrangler deploy` เมื่อเสร็จสิ้นจะได้ URL สำหรับใช้งานจริง เช่น:
 `https://jataka-tales.<your-subdomain>.workers.dev`
 
-*(หากเชื่อม GitHub กับ **Cloudflare Workers Builds** บน Dashboard ให้ตั้งค่า Build command เป็น `npm run build` และ Deploy command เป็น `npx wrangler deploy` โดยตั้งค่า `GEMINI_API_KEY` ใน **Settings > Variables and Secrets** ของ Worker Runtime)*
+**กรณีเชื่อม GitHub กับ Cloudflare Workers Builds (CI/CD บน Dashboard):**
+- **Build command:** `rm -f bun.lock && npm install --legacy-peer-deps && npm run build`
+- **Deploy command:** `npx wrangler deploy`
+- **Root directory:** `/`
+- **Secret:** ตั้งค่า `GEMINI_API_KEY` ใน **Settings > Variables and Secrets** ของ Worker Runtime (อยู่นอกหมวด Builds)
 
 ---
 
