@@ -118,6 +118,45 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidSharedBundle(data, bundleId) {
+      return data.keys().hasAll([
+          'bundleId', 'jatakaNumber', 'title', 'barami',
+          'contributorUid', 'isPublished', 'bundle', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'bundleId', 'jatakaNumber', 'title', 'barami',
+          'contributorUid', 'isPublished', 'bundle', 'createdAt', 'updatedAt'
+        ])
+        && data.bundleId is string
+        && data.bundleId.size() >= 7 && data.bundleId.size() <= 32
+        && data.bundleId.matches('^canon-[1-9][0-9]{0,2}$')
+        && data.bundleId == bundleId
+        && data.jatakaNumber is int
+        && data.jatakaNumber >= 1 && data.jatakaNumber <= 547
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.barami is string && data.barami.size() >= 1 && data.barami.size() <= 150
+        && data.contributorUid is string
+        && data.contributorUid.size() >= 1 && data.contributorUid.size() <= 128
+        && data.isPublished is bool && data.isPublished == true
+        && data.bundle is map
+        && data.bundle.keys().hasAll(['jatakaNumber', 'tale', 'interactive', 'quiz'])
+        && data.bundle.keys().hasOnly(['jatakaNumber', 'tale', 'interactive', 'quiz'])
+        && data.bundle.jatakaNumber is int && data.bundle.jatakaNumber == data.jatakaNumber
+        && data.bundle.tale is map
+        && data.bundle.tale.id is string && data.bundle.tale.id.size() >= 1 && data.bundle.tale.id.size() <= 64
+        && data.bundle.tale.title is string && data.bundle.tale.title.size() >= 1 && data.bundle.tale.title.size() <= 200
+        && data.bundle.tale.paragraphs is list
+        && data.bundle.tale.paragraphs.size() >= 1 && data.bundle.tale.paragraphs.size() <= 20
+        && data.bundle.tale.paragraphs[0] is string
+        && data.bundle.interactive is map
+        && data.bundle.interactive.scenes is list
+        && data.bundle.interactive.scenes.size() >= 1 && data.bundle.interactive.scenes.size() <= 10
+        && data.bundle.quiz is list
+        && data.bundle.quiz.size() >= 1 && data.bundle.quiz.size() <= 10
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     // 1. User Progress & Preferences
     match /users/{userId} {
       allow get: if isValidId(userId) && isOwner(userId);
@@ -136,16 +175,13 @@ service cloud.firestore {
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && (
-          // Action: Sync reading progress & scores
           incoming().diff(existing()).affectedKeys().hasOnly([
             'readNumbers', 'unlockedNumbers', 'completedInteractiveIds',
             'quizAttemptsCount', 'bestQuizScore', 'displayName', 'updatedAt'
           ]) ||
-          // Action: Update display preferences
           incoming().diff(existing()).affectedKeys().hasOnly([
             'theme', 'fontSize', 'updatedAt'
           ]) ||
-          // Action: Full state sync
           incoming().diff(existing()).affectedKeys().hasOnly([
             'displayName', 'readNumbers', 'unlockedNumbers',
             'completedInteractiveIds', 'quizAttemptsCount', 'bestQuizScore',
@@ -216,6 +252,32 @@ service cloud.firestore {
 
         allow delete: if isValidId(userId) && isValidId(taleId) && isOwner(userId);
       }
+    }
+
+    // 5. Community Shared Jataka Bundles (Non-PII Public Catalog)
+    match /shared_bundles/{bundleId} {
+      allow get: if isValidId(bundleId) && (resource == null || resource.data.isPublished == true);
+      allow list: if resource.data.isPublished == true;
+
+      allow create: if isValidId(bundleId)
+        && isVerifiedUser()
+        && isValidSharedBundle(incoming(), bundleId)
+        && incoming().contributorUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(bundleId)
+        && isVerifiedUser()
+        && isValidSharedBundle(incoming(), bundleId)
+        && incoming().contributorUid == existing().contributorUid
+        && incoming().contributorUid == request.auth.uid
+        && incoming().bundleId == existing().bundleId
+        && incoming().jatakaNumber == existing().jatakaNumber
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['bundle', 'updatedAt']);
+
+      allow delete: if false;
     }
   }
 }

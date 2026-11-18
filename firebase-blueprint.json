@@ -190,6 +190,72 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "SharedJatakaBundle": {
+      "title": "SharedJatakaBundle",
+      "description": "Community-shared Tipitaka Jataka bundle (tale, interactive story, quiz) persisted once generated so all users can read it without regenerating.",
+      "type": "object",
+      "properties": {
+        "bundleId": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 32,
+          "pattern": "^canon-[1-9][0-9]{0,2}$",
+          "description": "Document ID matching canon-{jatakaNumber}."
+        },
+        "jatakaNumber": {
+          "type": "integer",
+          "description": "Canonical Jataka number between 1 and 547."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Thai title of the Jataka tale."
+        },
+        "barami": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150,
+          "description": "Primary Barami or virtue."
+        },
+        "contributorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user who contributed the bundle."
+        },
+        "isPublished": {
+          "type": "boolean",
+          "description": "Whether the bundle is published to the shared community library."
+        },
+        "bundle": {
+          "type": "object",
+          "description": "Structured GeneratedJatakaBundle payload containing tale, interactive scenes, and quiz questions."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the bundle was first shared."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest update."
+        }
+      },
+      "required": [
+        "bundleId",
+        "jatakaNumber",
+        "title",
+        "barami",
+        "contributorUid",
+        "isPublished",
+        "bundle",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -216,6 +282,12 @@
         "$ref": "#/entities/ReflectionNote"
       },
       "description": "User's personal reflection notes attached to individual Jataka tales."
+    },
+    "/shared_bundles/{bundleId}": {
+      "schema": {
+        "$ref": "#/entities/SharedJatakaBundle"
+      },
+      "description": "Globally readable library of generated Tipitaka Jataka bundles shared across all users."
     }
   }
 }

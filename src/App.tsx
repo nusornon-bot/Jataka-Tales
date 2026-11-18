@@ -15,6 +15,7 @@ import {
 import { getJatakaNumberByTaleId, PREBUILT_BY_NUMBER } from './data/nipataCatalog';
 import {
   AppMode,
+  DynamicBundle,
   InteractiveStory,
   JatakaTale,
   QuizQuestion,
@@ -23,15 +24,9 @@ import {
 
 const BUNDLES_STORAGE_KEY = 'sala_jataka_dynamic_bundles_v1';
 
-interface DynamicBundle {
-  jatakaNumber: number;
-  tale: Omit<JatakaTale, 'image' | 'collectionGroup' | 'interactiveStoryId'>;
-  interactive: Omit<InteractiveStory, 'image'>;
-  quiz: QuizQuestion[];
-}
-
 export default function App() {
   const {
+    user,
     readNumbers,
     markNumberAsRead,
     toggleReadNumber,
@@ -40,6 +35,9 @@ export default function App() {
     markInteractiveCompleted,
     bestQuizScore,
     recordQuizScore,
+    sharedBundles,
+    fetchSharedBundleByNumber,
+    publishSharedBundle,
   } = useAppState();
 
   const [activeMode, setActiveMode] = useState<AppMode>('home');
@@ -79,39 +77,95 @@ export default function App() {
       .catch(() => {
         // Ignore status check error
       });
+
+    fetch('/api/jataka/bundles')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { bundles?: DynamicBundle[] } | null) => {
+        if (!Array.isArray(data?.bundles) || data.bundles.length === 0) return;
+        setDynamicBundles((prev) => {
+          const next = { ...prev };
+          let changed = false;
+          for (const b of data.bundles!) {
+            const num = Number(b?.jatakaNumber);
+            if (Number.isInteger(num) && num >= 1 && num <= 547 && !next[num]) {
+              next[num] = b;
+              changed = true;
+            }
+          }
+          if (!changed) return prev;
+          try {
+            localStorage.setItem(BUNDLES_STORAGE_KEY, JSON.stringify(next));
+          } catch {
+            // ignore storage quota
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        // Ignore shared bundles fetch error
+      });
   }, []);
 
+  // Merge community Firestore bundles with server/client cached bundles
+  const mergedBundles = useMemo<Record<number, DynamicBundle>>(
+    () => ({
+      ...sharedBundles,
+      ...dynamicBundles,
+    }),
+    [sharedBundles, dynamicBundles]
+  );
+
+  // Backfill server/client cached bundles to Firestore when signed in so all users share them permanently
+  useEffect(() => {
+    if (!user || !user.emailVerified) return;
+    const missingFromCloud = Object.values(dynamicBundles).filter(
+      (b) =>
+        Number.isInteger(b?.jatakaNumber) &&
+        b.jatakaNumber >= 1 &&
+        b.jatakaNumber <= 547 &&
+        !sharedBundles[b.jatakaNumber]
+    );
+    if (missingFromCloud.length === 0) return;
+    for (const bundle of missingFromCloud) {
+      void publishSharedBundle(bundle);
+    }
+  }, [user, dynamicBundles, sharedBundles, publishSharedBundle]);
+
   const allTales = useMemo<JatakaTale[]>(() => {
-    const extras: JatakaTale[] = Object.values(dynamicBundles).map((b) => ({
-      ...b.tale,
-      collectionGroup: 'nipata',
-      image: HERO_ARTWORK,
-      interactiveStoryId: b.interactive.id,
-    }));
+    const extras: JatakaTale[] = Object.values(mergedBundles)
+      .sort((a, b) => a.jatakaNumber - b.jatakaNumber)
+      .map((b) => ({
+        ...b.tale,
+        collectionGroup: 'nipata',
+        image: HERO_ARTWORK,
+        interactiveStoryId: b.interactive.id,
+      }));
     return [...JATAKA_TALES, ...extras];
-  }, [dynamicBundles]);
+  }, [mergedBundles]);
 
   const allInteractiveStories = useMemo<InteractiveStory[]>(() => {
-    const extras: InteractiveStory[] = Object.values(dynamicBundles).map((b) => ({
-      ...b.interactive,
-      image: HERO_ARTWORK,
-    }));
+    const extras: InteractiveStory[] = Object.values(mergedBundles)
+      .sort((a, b) => a.jatakaNumber - b.jatakaNumber)
+      .map((b) => ({
+        ...b.interactive,
+        image: HERO_ARTWORK,
+      }));
     return [...INTERACTIVE_STORIES, ...extras];
-  }, [dynamicBundles]);
+  }, [mergedBundles]);
 
   const allQuizQuestions = useMemo<QuizQuestion[]>(() => {
-    const extras: QuizQuestion[] = Object.values(dynamicBundles).flatMap(
-      (b) => b.quiz
-    );
+    const extras: QuizQuestion[] = Object.values(mergedBundles)
+      .sort((a, b) => a.jatakaNumber - b.jatakaNumber)
+      .flatMap((b) => b.quiz);
     return [...QUIZ_QUESTIONS, ...extras];
-  }, [dynamicBundles]);
+  }, [mergedBundles]);
 
   const unlockedNumbers = useMemo(() => {
-    const clientNums = Object.keys(dynamicBundles).map(Number);
+    const mergedNums = Object.keys(mergedBundles).map(Number);
     return Array.from(
-      new Set([...serverCachedNumbers, ...clientNums, ...syncedUnlockedNumbers])
+      new Set([...serverCachedNumbers, ...mergedNums, ...syncedUnlockedNumbers])
     );
-  }, [dynamicBundles, serverCachedNumbers, syncedUnlockedNumbers]);
+  }, [mergedBundles, serverCachedNumbers, syncedUnlockedNumbers]);
 
   const handleSelectMode = (mode: AppMode) => {
     setActiveMode(mode);
@@ -156,18 +210,19 @@ export default function App() {
     jatakaNumber: number,
     sceneVisual: SceneVisualSpec
   ) => {
+    const baseBundle = mergedBundles[jatakaNumber];
+    if (!baseBundle) return;
+    const updatedBundle: DynamicBundle = {
+      ...baseBundle,
+      tale: {
+        ...baseBundle.tale,
+        sceneVisual,
+      },
+    };
     setDynamicBundles((prev) => {
-      const target = prev[jatakaNumber];
-      if (!target) return prev;
       const next: Record<number, DynamicBundle> = {
         ...prev,
-        [jatakaNumber]: {
-          ...target,
-          tale: {
-            ...target.tale,
-            sceneVisual,
-          },
-        },
+        [jatakaNumber]: updatedBundle,
       };
       try {
         localStorage.setItem(BUNDLES_STORAGE_KEY, JSON.stringify(next));
@@ -176,6 +231,7 @@ export default function App() {
       }
       return next;
     });
+    void publishSharedBundle(updatedBundle);
   };
 
   const handleUnlockAndOpen = async (
@@ -207,29 +263,58 @@ export default function App() {
       }
     }
 
-    // 2. Check already unlocked client cache
-    let bundle = dynamicBundles[jatakaNumber];
+    // 2. Check already unlocked client / community cache
+    let bundle: DynamicBundle | undefined = mergedBundles[jatakaNumber];
     if (!bundle) {
       setLoadingNumber(jatakaNumber);
       try {
-        const res = await fetch('/api/jataka/bundle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jatakaNumber,
-            thaiTitle: hint?.thaiTitle,
-            paliTitle: hint?.paliTitle,
-            nipataName: hint?.nipataName,
-          }),
-        });
-        const data = (await res.json()) as {
-          bundle?: DynamicBundle;
-          error?: string;
-        };
-        if (!res.ok || !data.bundle) {
-          throw new Error(data.error || 'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้');
+        // 2a. Check Firestore shared community library first
+        try {
+          const cloudBundle = await fetchSharedBundleByNumber(jatakaNumber);
+          if (cloudBundle) {
+            bundle = cloudBundle;
+          }
+        } catch {
+          // Continue to server cache / generation fallback if Firestore lookup fails
         }
-        bundle = data.bundle;
+
+        // 2b. Check server/Worker KV cache via GET (zero Gemini call)
+        if (!bundle) {
+          try {
+            const getRes = await fetch(`/api/jataka/bundle/${jatakaNumber}`);
+            if (getRes.ok) {
+              const cachedData = (await getRes.json()) as { bundle?: DynamicBundle };
+              if (cachedData?.bundle) {
+                bundle = cachedData.bundle;
+              }
+            }
+          } catch {
+            // Continue to POST generation fallback
+          }
+        }
+
+        // 2c. Generate once via server-side Gemini API & cache for all users
+        if (!bundle) {
+          const res = await fetch('/api/jataka/bundle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jatakaNumber,
+              thaiTitle: hint?.thaiTitle,
+              paliTitle: hint?.paliTitle,
+              nipataName: hint?.nipataName,
+            }),
+          });
+          const data = (await res.json()) as {
+            bundle?: DynamicBundle;
+            error?: string;
+          };
+          if (!res.ok || !data.bundle) {
+            throw new Error(data.error || 'ไม่สามารถเรียบเรียงชาดกเรื่องนี้ได้');
+          }
+          bundle = data.bundle;
+        }
+
         setDynamicBundles((prev) => {
           const next = { ...prev, [jatakaNumber]: bundle! };
           try {
@@ -250,6 +335,9 @@ export default function App() {
       }
     }
 
+    if (!sharedBundles[jatakaNumber]) {
+      void publishSharedBundle(bundle);
+    }
     recordUnlockedNumber(jatakaNumber);
 
     // 3. Navigate to requested mode
@@ -291,6 +379,8 @@ export default function App() {
             )}
             <HomeGateway
               tales={allTales}
+              readNumbers={readNumbers}
+              unlockedNumbers={unlockedNumbers}
               onSelectMode={handleSelectMode}
               onOpen547Catalog={handleOpen547Catalog}
               onOpenTale={handleOpenTale}

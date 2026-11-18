@@ -1,6 +1,6 @@
 export type AppMode = 'home' | 'library' | 'interactive' | 'quiz';
 
-export type CollectionFilter = 'all' | 'tosachat' | 'nipata' | 'favorites';
+export type CollectionFilter = 'all' | 'tosachat' | 'nipata' | 'unread' | 'favorites';
 
 export type ThemePreference = 'light' | 'dark';
 export type FontSizePreference = 'sm' | 'md' | 'lg';
@@ -143,4 +143,11 @@ export interface ReflectionNoteRecord {
   title: string;
   content: string;
   updatedAtMs: number;
+}
+
+export interface DynamicBundle {
+  jatakaNumber: number;
+  tale: Omit<JatakaTale, 'image' | 'collectionGroup' | 'interactiveStoryId'>;
+  interactive: Omit<InteractiveStory, 'image'>;
+  quiz: QuizQuestion[];
 }

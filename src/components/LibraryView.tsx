@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   Compass,
   Loader2,
@@ -14,10 +13,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useAppState } from '../contexts/AppStateContext';
-import {
-  getJatakaNumberByTaleId,
-  PREBUILT_BY_NUMBER,
-} from '../data/nipataCatalog';
+import { getJatakaNumberByTaleId } from '../data/nipataCatalog';
 import { getTaleGlossary, getTaleSamodhana } from '../data/samodhanaGlossary';
 import { getJatakaSourceInfo } from '../utils/jatakaSource';
 import {
@@ -31,8 +27,7 @@ import { NarrationSegment, useThaiSpeech } from '../utils/speech';
 import { Tipitaka547Explorer } from './Tipitaka547Explorer';
 import { AnimatedJatakaArtwork } from './AnimatedJatakaArtwork';
 import { VoiceNarrationPlayer } from './VoiceNarrationPlayer';
-
-const TOTAL_CANON_JATAKAS = 547;
+import { ReadingProgressTracker } from './ReadingProgressTracker';
 
 const PROSE_SIZE_CLASSES: Record<FontSizePreference, string> = {
   sm: 'text-[15px] leading-[1.8]',
@@ -155,60 +150,37 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     }
   }, [activeTale?.id, notes]);
 
-  const progressStats = useMemo(() => {
-    const prebuiltNums = Object.keys(PREBUILT_BY_NUMBER).map(Number);
-    const unlockedSet = new Set(
-      [...prebuiltNums, ...unlockedNumbers].filter(
-        (n) => Number.isInteger(n) && n >= 1 && n <= TOTAL_CANON_JATAKAS
-      )
-    );
-    const readSet = new Set(
-      readNumbers.filter(
-        (n) => Number.isInteger(n) && n >= 1 && n <= TOTAL_CANON_JATAKAS
-      )
-    );
-    const exploredSet = new Set([...unlockedSet, ...readSet]);
+  const readSet = useMemo(
+    () =>
+      new Set(
+        readNumbers.filter(
+          (n) => Number.isInteger(n) && n >= 1 && n <= 547
+        )
+      ),
+    [readNumbers]
+  );
 
-    const readCount = readSet.size;
-    const unlockedCount = unlockedSet.size;
-    const unlockedUnreadCount = Array.from(unlockedSet).filter(
-      (n) => !readSet.has(n)
-    ).length;
-    const exploredCount = exploredSet.size;
-    const remainingCount = Math.max(0, TOTAL_CANON_JATAKAS - exploredCount);
-
-    const progressPercent = (exploredCount / TOTAL_CANON_JATAKAS) * 100;
-    const progressPercentLabel =
-      exploredCount >= TOTAL_CANON_JATAKAS
-        ? '100%'
-        : `${progressPercent.toFixed(1)}%`;
-
-    const readPercentWidth = (readCount / TOTAL_CANON_JATAKAS) * 100;
-    const unlockedUnreadPercentWidth =
-      (unlockedUnreadCount / TOTAL_CANON_JATAKAS) * 100;
-
-    return {
-      readSet,
-      readCount,
-      unlockedCount,
-      unlockedUnreadCount,
-      exploredCount,
-      remainingCount,
-      progressPercentLabel,
-      readPercentWidth,
-      unlockedUnreadPercentWidth,
-    };
-  }, [unlockedNumbers, readNumbers]);
+  const unreadTalesCount = useMemo(
+    () =>
+      tales.filter((tale) => {
+        const num = getJatakaNumberByTaleId(tale.id);
+        return num === null || !readSet.has(num);
+      }).length,
+    [tales, readSet]
+  );
 
   const totalFavoritesCount = Object.keys(favorites).length;
 
   const filteredTales = useMemo(() => {
     const q = query.trim().toLowerCase();
     return tales.filter((tale) => {
+      const taleNum = getJatakaNumberByTaleId(tale.id);
       const matchCollection =
         collectionFilter === 'all' ||
         (collectionFilter === 'favorites'
           ? Boolean(favorites[tale.id])
+          : collectionFilter === 'unread'
+          ? taleNum === null || !readSet.has(taleNum)
           : tale.collectionGroup === collectionFilter);
       const matchCat = category === 'ทั้งหมด' || tale.virtue === category;
       const matchQuery =
@@ -219,7 +191,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         tale.moralPoints.some((m) => m.toLowerCase().includes(q));
       return matchCollection && matchCat && matchQuery;
     });
-  }, [tales, collectionFilter, category, query, favorites]);
+  }, [tales, collectionFilter, category, query, favorites, readSet]);
 
   const pendingFavoriteRecords = useMemo(() => {
     if (collectionFilter !== 'favorites') return [];
@@ -241,7 +213,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     const isReadingThis = isSpeaking && speakingId === activeTale.id;
     const activeTaleNumber = getJatakaNumberByTaleId(activeTale.id);
     const isActiveTaleRead =
-      activeTaleNumber !== null && progressStats.readSet.has(activeTaleNumber);
+      activeTaleNumber !== null && readSet.has(activeTaleNumber);
     const activeSource = getJatakaSourceInfo(activeTale);
     const samodhanaList = getTaleSamodhana(activeTale);
     const glossaryList = getTaleGlossary(activeTale);
@@ -795,101 +767,24 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         )}
       </div>
 
-      {/* 547 Jataka Tales Progress Indicator */}
-      <section
-        aria-label="ความคืบหน้าการอ่านและปลดล็อกชาดก 547 เรื่อง"
-        className="bg-white dark:bg-[#1A1D24] border border-[#E4DEC9] dark:border-[#2E3442] rounded-xl p-5 space-y-3.5"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-          <div className="space-y-0.5">
-            <h2 className="font-serif text-base font-bold text-[#1C1917] dark:text-[#F3F0E6]">
-              ความคืบหน้าคลังชาดก ๕๔๗ เรื่อง
-            </h2>
-            <p className="text-xs text-stone-600 dark:text-stone-400">
-              <span>อ่านแล้ว {progressStats.readCount} เรื่อง</span>
-              <span aria-hidden="true"> · </span>
-              <span>ปลดล็อกพร้อมอ่าน {progressStats.unlockedCount} เรื่อง</span>
-              <span aria-hidden="true"> · </span>
-              <span>คงเหลือ {progressStats.remainingCount} เรื่อง</span>
-            </p>
-          </div>
-
-          <div className="flex items-baseline gap-2.5 shrink-0">
-            <span className="text-sm font-mono tabular-nums text-stone-700 dark:text-stone-300">
-              {progressStats.exploredCount} / {TOTAL_CANON_JATAKAS} เรื่อง
-            </span>
-            <span className="text-xl font-serif font-bold tabular-nums text-[#1E3A8A] dark:text-blue-300">
-              {progressStats.progressPercentLabel}
-            </span>
-          </div>
-        </div>
-
-        <div
-          role="progressbar"
-          aria-label="ความคืบหน้าการอ่านและปลดล็อกชาดกจากทั้งหมด 547 เรื่อง"
-          aria-valuenow={progressStats.exploredCount}
-          aria-valuemin={0}
-          aria-valuemax={TOTAL_CANON_JATAKAS}
-          aria-valuetext={`อ่านหรือปลดล็อกแล้ว ${progressStats.exploredCount} จาก ${TOTAL_CANON_JATAKAS} เรื่อง (${progressStats.progressPercentLabel})`}
-          className="h-3 w-full bg-[#EFEAE0] dark:bg-[#232732] border border-[#DFD7C5] dark:border-[#374151] rounded-full overflow-hidden flex"
-        >
-          {progressStats.readCount > 0 && (
-            <div
-              className="h-full bg-[#1E3A8A] dark:bg-blue-400 transition-all duration-300"
-              style={{
-                width: `${progressStats.readPercentWidth}%`,
-                minWidth: '6px',
-              }}
-            />
-          )}
-          {progressStats.unlockedUnreadCount > 0 && (
-            <div
-              className="h-full bg-[#C89B54] transition-all duration-300"
-              style={{
-                width: `${progressStats.unlockedUnreadPercentWidth}%`,
-                minWidth: '6px',
-              }}
-            />
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-stone-600 dark:text-stone-400">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-xs bg-[#1E3A8A] dark:bg-blue-400 shrink-0"
-                aria-hidden="true"
-              />
-              <span>อ่านแล้ว ({progressStats.readCount})</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-xs bg-[#C89B54] shrink-0"
-                aria-hidden="true"
-              />
-              <span>ปลดล็อกรออ่าน ({progressStats.unlockedUnreadCount})</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-xs bg-[#EFEAE0] dark:bg-[#232732] border border-[#D6CEBE] dark:border-[#374151] shrink-0"
-                aria-hidden="true"
-              />
-              <span>ยังไม่ปลดล็อก ({progressStats.remainingCount})</span>
-            </span>
-          </div>
-
-          {activeSubTab === 'curated' && (
-            <button
-              type="button"
-              onClick={() => onChangeSubTab('canon547')}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#1E3A8A] dark:text-blue-300 hover:underline whitespace-nowrap"
-            >
-              <span>สำรวจสารบัญ ๕๔๗ เรื่องเพื่อปลดล็อกเพิ่ม</span>
-              <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </section>
+      {/* Visual Reading Progress Tracker */}
+      <ReadingProgressTracker
+        tales={tales}
+        readNumbers={readNumbers}
+        unlockedNumbers={unlockedNumbers}
+        variant="library"
+        onOpenTale={(taleId) => {
+          stop();
+          onSelectTale(taleId);
+        }}
+        onOpen547Catalog={() => onChangeSubTab('canon547')}
+        onFilterUnread={() => {
+          onChangeSubTab('curated');
+          setCollectionFilter('unread');
+          setCategory('ทั้งหมด');
+          setQuery('');
+        }}
+      />
 
       {activeSubTab === 'canon547' ? (
         <Tipitaka547Explorer
@@ -915,6 +810,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     {
                       id: 'nipata',
                       label: `นิบาตชาดก (${tales.filter((t) => t.collectionGroup === 'nipata').length})`,
+                    },
+                    {
+                      id: 'unread',
+                      label: `ยังไม่อ่าน (${unreadTalesCount})`,
                     },
                     {
                       id: 'favorites',
@@ -981,6 +880,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               <p className="text-base font-medium text-[#1C1917] dark:text-[#F3F0E6]">
                 {collectionFilter === 'favorites'
                   ? 'ยังไม่มีนิทานชาดกในรายการโปรด กดปุ่มรูปดาวบนการ์ดนิทานหรือในสารบัญ ๕๔๗ เรื่องเพื่อบันทึกเรื่องที่ชื่นชอบ'
+                  : collectionFilter === 'unread'
+                  ? 'ยินดีด้วย คุณอ่านนิทานชาดกในคลังพร้อมอ่านครบทุกเรื่องแล้ว สามารถปลดล็อกเรื่องใหม่เพิ่มเติมได้ที่สารบัญ ๕๔๗ เรื่อง'
                   : 'ไม่พบเรื่องชาดกที่ตรงกับเงื่อนไขการค้นหา'}
               </p>
               <button
@@ -1067,7 +968,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                   </span>
                                 </>
                               )}
-                              {taleNum !== null && progressStats.readSet.has(taleNum) && (
+                              {taleNum !== null && readSet.has(taleNum) && (
                                 <>
                                   <span aria-hidden="true"> · </span>
                                   <span className="font-medium text-[#1E3A8A] dark:text-blue-300">

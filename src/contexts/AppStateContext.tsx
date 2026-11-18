@@ -19,13 +19,16 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from '../firebase';
 import {
   BookmarkRecord,
+  DynamicBundle,
   FontSizePreference,
   ReflectionNoteRecord,
   ThemePreference,
@@ -122,6 +125,10 @@ interface AppStateContextValue {
     content: string;
   }) => Promise<void>;
   deleteReflectionNote: (taleId: string) => Promise<void>;
+
+  sharedBundles: Record<number, DynamicBundle>;
+  fetchSharedBundleByNumber: (jatakaNumber: number) => Promise<DynamicBundle | null>;
+  publishSharedBundle: (bundle: DynamicBundle) => Promise<void>;
 }
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
@@ -197,6 +204,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
   const [notes, setNotes] = useState<Record<string, ReflectionNoteRecord>>(() =>
     readLocalJson<Record<string, ReflectionNoteRecord>>(STORAGE_KEYS.notes, {})
   );
+
+  const [sharedBundles, setSharedBundles] = useState<Record<number, DynamicBundle>>({});
 
   // Sync HTML .dark class with theme preference
   useEffect(() => {
@@ -510,6 +519,42 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [authReady, user, userDocReady]);
 
+  // Global real-time listener for community-shared generated Jataka bundles (readable by all users)
+  useEffect(() => {
+    const sharedQuery = query(
+      collection(db, 'shared_bundles'),
+      where('isPublished', '==', true)
+    );
+    const unsubShared = onSnapshot(
+      sharedQuery,
+      (snap) => {
+        const next: Record<number, DynamicBundle> = {};
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() as {
+            jatakaNumber?: number;
+            bundle?: DynamicBundle;
+          };
+          const num = Number(data?.jatakaNumber);
+          if (
+            Number.isInteger(num) &&
+            num >= 1 &&
+            num <= 547 &&
+            data.bundle?.tale &&
+            data.bundle?.interactive
+          ) {
+            next[num] = data.bundle;
+          }
+        });
+        setSharedBundles(next);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'shared_bundles');
+      }
+    );
+
+    return () => unsubShared();
+  }, []);
+
   const syncProgressFields = useCallback(
     async (fields: Record<string, unknown>) => {
       if (!user || !userDocReady) return;
@@ -804,6 +849,98 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
     [user, userDocReady]
   );
 
+  const fetchSharedBundleByNumber = useCallback(
+    async (jatakaNumber: number): Promise<DynamicBundle | null> => {
+      if (!Number.isInteger(jatakaNumber) || jatakaNumber < 1 || jatakaNumber > 547) {
+        return null;
+      }
+      if (sharedBundles[jatakaNumber]) {
+        return sharedBundles[jatakaNumber];
+      }
+      const bundleId = `canon-${jatakaNumber}`;
+      const path = `shared_bundles/${bundleId}`;
+      try {
+        const snap = await getDoc(doc(db, 'shared_bundles', bundleId));
+        if (!snap.exists()) return null;
+        const data = snap.data() as { bundle?: DynamicBundle };
+        if (data?.bundle?.tale && data.bundle?.interactive) {
+          setSharedBundles((prev) => ({ ...prev, [jatakaNumber]: data.bundle! }));
+          return data.bundle;
+        }
+        return null;
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, path);
+      }
+    },
+    [sharedBundles]
+  );
+
+  const publishSharedBundle = useCallback(
+    async (bundle: DynamicBundle) => {
+      if (!user || !user.emailVerified) return;
+      const num = Number(bundle?.jatakaNumber);
+      if (!Number.isInteger(num) || num < 1 || num > 547) return;
+      if (
+        !bundle?.tale?.id ||
+        !bundle?.tale?.title ||
+        !Array.isArray(bundle?.tale?.paragraphs) ||
+        bundle.tale.paragraphs.length === 0 ||
+        !Array.isArray(bundle?.interactive?.scenes) ||
+        bundle.interactive.scenes.length === 0 ||
+        !Array.isArray(bundle?.quiz) ||
+        bundle.quiz.length === 0
+      ) {
+        return;
+      }
+
+      const bundleId = `canon-${num}`;
+      const path = `shared_bundles/${bundleId}`;
+      const sanitizedPayload: DynamicBundle = {
+        jatakaNumber: num,
+        tale: {
+          ...bundle.tale,
+          id: String(bundle.tale.id).slice(0, 64),
+          title: String(bundle.tale.title).slice(0, 200),
+          paragraphs: bundle.tale.paragraphs.slice(0, 20),
+        },
+        interactive: {
+          ...bundle.interactive,
+          scenes: bundle.interactive.scenes.slice(0, 10),
+        },
+        quiz: bundle.quiz.slice(0, 10),
+      };
+
+      try {
+        const docRef = doc(db, 'shared_bundles', bundleId);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) {
+          await setDoc(docRef, {
+            bundleId,
+            jatakaNumber: num,
+            title: (sanitizedPayload.tale.title || `ชาดกลำดับที่ ${num}`).slice(0, 200),
+            barami: (sanitizedPayload.tale.barami || 'คุณธรรม').slice(0, 150),
+            contributorUid: user.uid,
+            isPublished: true,
+            bundle: sanitizedPayload,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          const existingData = snap.data() as { contributorUid?: string };
+          if (existingData?.contributorUid === user.uid) {
+            await updateDoc(docRef, {
+              bundle: sanitizedPayload,
+              updatedAt: serverTimestamp(),
+            });
+          }
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, path);
+      }
+    },
+    [user]
+  );
+
   const value = useMemo<AppStateContextValue>(
     () => ({
       user,
@@ -838,6 +975,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       notes,
       saveReflectionNote,
       deleteReflectionNote,
+      sharedBundles,
+      fetchSharedBundleByNumber,
+      publishSharedBundle,
     }),
     [
       user,
@@ -868,6 +1008,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({
       notes,
       saveReflectionNote,
       deleteReflectionNote,
+      sharedBundles,
+      fetchSharedBundleByNumber,
+      publishSharedBundle,
     ]
   );
 

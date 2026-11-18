@@ -6,9 +6,12 @@ import { getJatakaSourceInfo } from '../utils/jatakaSource';
 import { DailyJatakaWisdom } from './DailyJatakaWisdom';
 import { AnimatedJatakaArtwork } from './AnimatedJatakaArtwork';
 import { TenBaramiTracker } from './TenBaramiTracker';
+import { ReadingProgressTracker } from './ReadingProgressTracker';
 
 interface HomeGatewayProps {
   tales: JatakaTale[];
+  readNumbers: number[];
+  unlockedNumbers: number[];
   onSelectMode: (mode: AppMode) => void;
   onOpen547Catalog: () => void;
   onOpenTale: (taleId: string) => void;
@@ -27,6 +30,8 @@ interface HomeGatewayProps {
 
 export const HomeGateway: React.FC<HomeGatewayProps> = ({
   tales,
+  readNumbers,
+  unlockedNumbers,
   onSelectMode,
   onOpen547Catalog,
   onOpenTale,
@@ -125,6 +130,17 @@ export const HomeGateway: React.FC<HomeGatewayProps> = ({
       <DailyJatakaWisdom
         onUnlockAndOpen={onUnlockAndOpen}
         loadingNumber={loadingNumber}
+      />
+
+      {/* Reading Progress Tracker */}
+      <ReadingProgressTracker
+        tales={tales}
+        readNumbers={readNumbers}
+        unlockedNumbers={unlockedNumbers}
+        variant="home"
+        onOpenTale={onOpenTale}
+        onOpenLibrary={() => onSelectMode('library')}
+        onOpen547Catalog={onOpen547Catalog}
       />
 
       {/* Ten Barami Mastery Map */}

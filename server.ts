@@ -84,6 +84,27 @@ async function startServer() {
     res.json({ cachedNumbers, cachedNipataRanges });
   });
 
+  app.get('/api/jataka/bundles', (_req: Request, res: Response) => {
+    const bundles = Object.values(memoryCache.bundles).sort(
+      (a, b) => a.jatakaNumber - b.jatakaNumber
+    );
+    res.json({ bundles });
+  });
+
+  app.get('/api/jataka/bundle/:number', (req: Request, res: Response) => {
+    const num = Number(req.params.number);
+    if (!Number.isInteger(num) || num < 1 || num > 547) {
+      res.status(400).json({ error: 'กรุณาระบุเลขลำดับชาดกระหว่าง 1 ถึง 547' });
+      return;
+    }
+    const existing = memoryCache.bundles[String(num)];
+    if (!existing) {
+      res.status(404).json({ error: 'ยังไม่มีชาดกเรื่องนี้ในแคชระบบ' });
+      return;
+    }
+    res.json({ bundle: existing, fromCache: true });
+  });
+
   app.post('/api/jataka/nipata-index', async (req: Request, res: Response) => {
     try {
       const { nipataName, startNo, endNo } = req.body as {

@@ -143,6 +143,52 @@ async function handleStatus(env: Env): Promise<Response> {
   return jsonResponse({ cachedNumbers, cachedNipataRanges });
 }
 
+async function handleGetBundles(env: Env): Promise<Response> {
+  if (env.JATAKA_KV) {
+    const kvMeta = await readKvJson<KvMetaIndex>(env.JATAKA_KV, 'meta:index');
+    const missingNums = (kvMeta?.cachedNumbers || []).filter(
+      (n) => Number.isInteger(n) && n >= 1 && n <= 547 && !memoryCache.bundles[String(n)]
+    );
+    if (missingNums.length > 0) {
+      await Promise.all(
+        missingNums.map(async (n) => {
+          const kvBundle = await readKvJson<GeneratedJatakaBundle>(
+            env.JATAKA_KV,
+            `bundle:${n}`
+          );
+          if (kvBundle) {
+            memoryCache.bundles[String(n)] = kvBundle;
+          }
+        })
+      );
+    }
+  }
+
+  const bundles = Object.values(memoryCache.bundles).sort(
+    (a, b) => a.jatakaNumber - b.jatakaNumber
+  );
+  return jsonResponse({ bundles });
+}
+
+async function handleGetBundleByNumber(num: number, env: Env): Promise<Response> {
+  if (!Number.isInteger(num) || num < 1 || num > 547) {
+    return jsonResponse({ error: 'กรุณาระบุเลขลำดับชาดกระหว่าง 1 ถึง 547' }, 400);
+  }
+  const key = String(num);
+  if (memoryCache.bundles[key]) {
+    return jsonResponse({ bundle: memoryCache.bundles[key], fromCache: true });
+  }
+  const kvBundle = await readKvJson<GeneratedJatakaBundle>(
+    env.JATAKA_KV,
+    `bundle:${key}`
+  );
+  if (kvBundle) {
+    memoryCache.bundles[key] = kvBundle;
+    return jsonResponse({ bundle: kvBundle, fromCache: true });
+  }
+  return jsonResponse({ error: 'ยังไม่มีชาดกเรื่องนี้ในแคชระบบ' }, 404);
+}
+
 async function handleNipataIndex(
   request: Request,
   env: Env,
@@ -470,6 +516,13 @@ export default {
     if (pathname.startsWith('/api/')) {
       if (request.method === 'GET' && pathname === '/api/jataka/status') {
         return handleStatus(env);
+      }
+      if (request.method === 'GET' && pathname === '/api/jataka/bundles') {
+        return handleGetBundles(env);
+      }
+      if (request.method === 'GET' && pathname.startsWith('/api/jataka/bundle/')) {
+        const num = Number(pathname.slice('/api/jataka/bundle/'.length));
+        return handleGetBundleByNumber(num, env);
       }
       if (request.method === 'POST' && pathname === '/api/jataka/nipata-index') {
         return handleNipataIndex(request, env, ctx);
