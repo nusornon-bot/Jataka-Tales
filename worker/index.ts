@@ -22,7 +22,7 @@ export interface Env {
 }
 
 const WORKER_MISSING_KEY_MSG =
-  'ยังไม่ได้ตั้งค่า GEMINI_API_KEY บน Cloudflare Workers (ตั้งค่า Secret GEMINI_API_KEY ได้ที่ Cloudflare Dashboard > Settings > Variables and Secrets หรือรัน npx wrangler secret put GEMINI_API_KEY / ใส่ใน .dev.vars — ท่านยังสามารถอ่านชาดกที่แคชไว้แล้วได้ตามปกติ)';
+  'ยังไม่ได้ตั้งค่า GEMINI_API_KEY ใน Worker Runtime (ใน Cloudflare Dashboard ต้องเพิ่มใน Settings > Variables and Secrets ของตัว Worker เอง ไม่ใช่ในหมวด Builds > Variables and secrets หรือรัน npx wrangler secret put GEMINI_API_KEY — ท่านยังสามารถอ่านชาดกที่แคชไว้แล้วได้ตามปกติ)';
 
 function getWorkerApiKey(env: Env): string | undefined {
   return env.GEMINI_API_KEY || env.API_KEY;

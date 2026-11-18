@@ -9,6 +9,8 @@
 - **Frontend (React + Vite + PWA)**: Build เป็นไฟล์ Static + Service Worker ที่โฟลเดอร์ `./dist` และให้บริการผ่าน **Workers Static Assets** (`assets.directory = "./dist"`, `not_found_handling = "single-page-application"`)
 - **Backend API (`/api/jataka/*`)**: ทำงานบน **Cloudflare Worker** (`worker/index.ts`) ซึ่งใช้ `shared/jatakaCore.ts` ร่วมกับระบบ AI Studio เดิม (`server.ts`) โดยมีเส้นทางดังนี้
   - `GET /api/jataka/status`
+  - `GET /api/jataka/bundles`
+  - `GET /api/jataka/bundle/:number`
   - `POST /api/jataka/nipata-index`
   - `POST /api/jataka/bundle`
   - `POST /api/jataka/daily-wisdom`
@@ -73,9 +75,9 @@ npx wrangler login
   npx wrangler secret put GEMINI_API_KEY
   ```
   *(เมื่อระบบถาม ให้วาง Gemini API Key แล้วกด Enter)*
-- **วิธี B — ผ่านหน้าเว็บ Cloudflare Dashboard (หาก Deploy ผ่าน GitHub หรือไม่สะดวกใช้ CLI):**
-  1. เข้า **Cloudflare Dashboard > Workers & Pages** > เลือก Worker **`sala-jataka`**
-  2. ไปที่แท็บ **Settings > Variables and Secrets**
+- **วิธี B — ผ่านหน้าเว็บ Cloudflare Dashboard (หาก Deploy ผ่าน GitHub Builds):**
+  1. เข้า **Cloudflare Dashboard > Workers & Pages** > เลือก Worker **`jataka-tales`**
+  2. ไปที่แท็บ **Settings** แล้วเลือกส่วน **Variables and Secrets** ของตัว Worker เอง (**ข้อควรระวัง:** อย่าสับสนกับช่อง `Builds > Variables and secrets` ซึ่งใช้ได้เฉพาะตอน Build โค้ดเท่านั้น แต่จะไม่ถูกส่งเข้า Worker ตอนมีคนใช้งานเว็บ)
   3. กด **+ Add** แล้วเลือก Type เป็น **Secret**
   4. ตั้งชื่อ Variable name เป็น `GEMINI_API_KEY` และวางค่า API Key ลงใน Value แล้วกด **Deploy / Save**
 
@@ -85,9 +87,9 @@ npm run cf:deploy
 ```
 
 คำสั่งนี้จะรัน `vite build` แล้วตามด้วย `wrangler deploy` เมื่อเสร็จสิ้นจะได้ URL สำหรับใช้งานจริง เช่น:
-`https://sala-jataka.<your-subdomain>.workers.dev`
+`https://jataka-tales.<your-subdomain>.workers.dev`
 
-*(หากเชื่อม GitHub กับ **Cloudflare Workers Builds** บน Dashboard ให้ตั้งค่า Build command เป็น `npm run build` และ Deploy command เป็น `npx wrangler deploy` พร้อมเพิ่ม Secret `GEMINI_API_KEY` ใน Settings > Variables and Secrets)*
+*(หากเชื่อม GitHub กับ **Cloudflare Workers Builds** บน Dashboard ให้ตั้งค่า Build command เป็น `npm run build` และ Deploy command เป็น `npx wrangler deploy` โดยตั้งค่า `GEMINI_API_KEY` ใน **Settings > Variables and Secrets** ของ Worker Runtime)*
 
 ---
 
@@ -98,7 +100,7 @@ npm run cf:deploy
 1. เปิด **Firebase Console** (โปรเจกต์ `gen-lang-client-0352175547`)
 2. ไปที่ **Authentication > Settings > Authorized domains**
 3. กด **Add domain** แล้วเพิ่มโดเมนของ Cloudflare Workers ของท่าน เช่น:
-   - `sala-jataka.<your-subdomain>.workers.dev`
+   - `jataka-tales.<your-subdomain>.workers.dev`
    - *(หากผูก Custom Domain ของตนเอง ให้เพิ่มโดเมนนั้นด้วย)*
 
 > หากข้ามขั้นตอนนี้ ปุ่ม "เข้าสู่ระบบ" ด้วย Google บนโดเมน `*.workers.dev` จะถูก Firebase บล็อกด้วย `auth/unauthorized-domain`
