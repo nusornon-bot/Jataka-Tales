@@ -128,6 +128,7 @@ export const HomeGateway: React.FC<HomeGatewayProps> = ({
 
       {/* Daily Jataka Wisdom */}
       <DailyJatakaWisdom
+        tales={tales}
         onUnlockAndOpen={onUnlockAndOpen}
         loadingNumber={loadingNumber}
       />
